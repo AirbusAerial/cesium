@@ -1666,15 +1666,26 @@ define([
         var loadResources = model._loadResources;
         var bufferViews = model.gltf.bufferViews;
         var bufferView = bufferViews[bufferViewId];
+        var uint8Array = loadResources.getBuffer(bufferView);
+        var source = model.gltf.buffers[bufferView.buffer].extras._pipeline.source;
+        var byteOffset = source.byteOffset + bufferView.byteOffset;
+        // var length = uint8Array.byteLength / 4;//ComponentDatatype.getSizeInBytes(componentType)
+        var length = uint8Array.byteLength;//ComponentDatatype.getSizeInBytes(componentType)
+        // var length = uint8Array.byteLength;//ComponentDatatype.getSizeInBytes(componentType)
+        // var typedArray = ComponentDatatype.createArrayBufferView(componentDatatype, source.buffer, byteOffset, length);
+        var buffer = new DataView(source.buffer, byteOffset, length);
 
         var vertexBuffer = Buffer.createVertexBuffer({
-            context : context,
-            typedArray : loadResources.getBuffer(bufferView),
-            usage : BufferUsage.STATIC_DRAW
+            context: context,
+            typedArray: uint8Array,
+            usage: BufferUsage.STATIC_DRAW
         });
         vertexBuffer.vertexArrayDestroyable = false;
         model._rendererResources.buffers[bufferViewId] = vertexBuffer;
         model._geometryByteLength += vertexBuffer.sizeInBytes;
+        if (!model.vertexBuffer) {
+            model.vertexBuffer = buffer;
+        }
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -1703,16 +1714,24 @@ define([
         var loadResources = model._loadResources;
         var bufferViews = model.gltf.bufferViews;
         var bufferView = bufferViews[bufferViewId];
+        var uint8Array = loadResources.getBuffer(bufferView);
+        var source = model.gltf.buffers[bufferView.buffer].extras._pipeline.source;
+        var byteOffset = source.byteOffset + bufferView.byteOffset;
+        // var length = uint8Array.byteLength / ComponentDatatype.getSizeInBytes(componentType)
+        var length = uint8Array.byteLength;
+        var buffer = new DataView(source.buffer, byteOffset, length);
+        // var typedArray = ComponentDatatype.createArrayBufferView(componentType, source.buffer, byteOffset, length);
 
         var indexBuffer = Buffer.createIndexBuffer({
-            context : context,
-            typedArray : loadResources.getBuffer(bufferView),
-            usage : BufferUsage.STATIC_DRAW,
-            indexDatatype : componentType
+            context: context,
+            typedArray: uint8Array,
+            usage: BufferUsage.STATIC_DRAW,
+            indexDatatype: componentType
         });
         indexBuffer.vertexArrayDestroyable = false;
         model._rendererResources.buffers[bufferViewId] = indexBuffer;
         model._geometryByteLength += indexBuffer.sizeInBytes;
+        model.indexBuffer = buffer
     }
 
     var scratchVertexBufferJob = new CreateVertexBufferJob();
