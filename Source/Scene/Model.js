@@ -1666,15 +1666,26 @@ define([
         var loadResources = model._loadResources;
         var bufferViews = model.gltf.bufferViews;
         var bufferView = bufferViews[bufferViewId];
+        var uint8Array = loadResources.getBuffer(bufferView);
+        var source = model.gltf.buffers[bufferView.buffer].extras._pipeline.source;
+        var byteOffset = source.byteOffset + bufferView.byteOffset;
+        // var length = uint8Array.byteLength / 4;//ComponentDatatype.getSizeInBytes(componentType)
+        var length = uint8Array.byteLength;//ComponentDatatype.getSizeInBytes(componentType)
+        // var length = uint8Array.byteLength;//ComponentDatatype.getSizeInBytes(componentType)
+        // var typedArray = ComponentDatatype.createArrayBufferView(componentDatatype, source.buffer, byteOffset, length);
+        var buffer = new DataView(source.buffer, byteOffset, length);
 
         var vertexBuffer = Buffer.createVertexBuffer({
-            context : context,
-            typedArray : loadResources.getBuffer(bufferView),
-            usage : BufferUsage.STATIC_DRAW
+            context: context,
+            typedArray: uint8Array,
+            usage: BufferUsage.STATIC_DRAW
         });
         vertexBuffer.vertexArrayDestroyable = false;
         model._rendererResources.buffers[bufferViewId] = vertexBuffer;
         model._geometryByteLength += vertexBuffer.sizeInBytes;
+        if (!model.vertexBuffer) {
+            model.vertexBuffer = buffer;
+        }
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -1703,16 +1714,88 @@ define([
         var loadResources = model._loadResources;
         var bufferViews = model.gltf.bufferViews;
         var bufferView = bufferViews[bufferViewId];
+        var uint8Array = loadResources.getBuffer(bufferView);
+        var source = model.gltf.buffers[bufferView.buffer].extras._pipeline.source;
+        var byteOffset = source.byteOffset + bufferView.byteOffset;
+        // var length = uint8Array.byteLength / ComponentDatatype.getSizeInBytes(componentType)
+        var length = uint8Array.byteLength;
+        var buffer = new DataView(source.buffer, byteOffset, length);
+        // var typedArray = ComponentDatatype.createArrayBufferView(componentType, source.buffer, byteOffset, length);
 
         var indexBuffer = Buffer.createIndexBuffer({
-            context : context,
-            typedArray : loadResources.getBuffer(bufferView),
-            usage : BufferUsage.STATIC_DRAW,
-            indexDatatype : componentType
+            context: context,
+            typedArray: uint8Array,
+            usage: BufferUsage.STATIC_DRAW,
+            indexDatatype: componentType
         });
         indexBuffer.vertexArrayDestroyable = false;
         model._rendererResources.buffers[bufferViewId] = indexBuffer;
         model._geometryByteLength += indexBuffer.sizeInBytes;
+        model.indexBuffer = buffer
+    }
+
+    function createTriangles(model) {
+        var mat = model._computedModelMatrix;
+        var rtc = model._rtcCenter;
+        model.triangles = [];
+
+        var indices = model.indexBuffer;
+        var length = model.indexBuffer.byteLength / 2;
+        var vertices = model.vertexBuffer;
+
+        for (var i = 0; i < length; i += 3) {
+            var i0 = i * 2;
+            var i1 = (i+1) * 2;
+            var i2 = (i+2) * 2;
+
+            var vx0 = 12 * indices.getUint16(i0, true);
+            var vy0 = 12 * indices.getUint16(i0, true) + 4;
+            var vz0 = 12 * indices.getUint16(i0, true) + 8;
+
+            var vx1 = 12 * indices.getUint16(i1, true);
+            var vy1 = 12 * indices.getUint16(i1, true) + 4;
+            var vz1 = 12 * indices.getUint16(i1, true) + 8;
+
+            var vx2 = 12 * indices.getUint16(i2, true);
+            var vy2 = 12 * indices.getUint16(i2, true) + 4;
+            var vz2 = 12 * indices.getUint16(i2, true) + 8;
+
+            var p0 = new Cesium.Cartesian3(
+                vertices.getFloat32(vx0, true),
+                vertices.getFloat32(vy0, true),
+                vertices.getFloat32(vz0, true)
+            );
+            Cesium.Matrix4.multiplyByPoint(mat, p0, p0);
+            if (rtc) {
+                Cesium.Cartesian3.add(p0, rtc, p0)
+            }
+
+            var p1 = new Cesium.Cartesian3(
+                vertices.getFloat32(vx1, true),
+                vertices.getFloat32(vy1, true),
+                vertices.getFloat32(vz1, true)
+            );
+            Cesium.Matrix4.multiplyByPoint(mat, p1, p1);
+            if (rtc) {
+                Cesium.Cartesian3.add(p1, rtc, p1)
+            }
+
+            var p2 = new Cesium.Cartesian3(
+                vertices.getFloat32(vx2, true),
+                vertices.getFloat32(vy2, true),
+                vertices.getFloat32(vz2, true)
+            );
+            Cesium.Matrix4.multiplyByPoint(mat, p2, p2);
+            if (rtc) {
+                Cesium.Cartesian3.add(p2, rtc, p2)
+            }
+
+            model.triangles.push({
+                p0: p0,
+                p1: p1,
+                p2: p2
+            })
+        }
     }
 
     var scratchVertexBufferJob = new CreateVertexBufferJob();
@@ -1747,6 +1830,9 @@ define([
                 }
                 indexBuffersToCreate.dequeue();
             }
+            model.readyPromise.then(function(model) {
+                createTriangles(model);
+            });
         } else {
             while (vertexBuffersToCreate.length > 0) {
                 createVertexBuffer(vertexBuffersToCreate.dequeue(), model, context);
@@ -1756,6 +1842,7 @@ define([
                 i = indexBuffersToCreate.dequeue();
                 createIndexBuffer(i.id, i.componentType, model, context);
             }
+            createTriangles(model);
         }
     }
 
@@ -4010,6 +4097,24 @@ define([
     }
 
     /**
+     * Computes the intersection of a ray and a Model as a Cartesian3 coordinate.
+     */
+    Model.prototype.intersectRay = function(ray) {
+        for (var i = 0; i < this.triangles.length; i++) {
+
+            const p0 = this.triangles[i].p0;
+            const p1 = this.triangles[i].p1;
+            const p2 = this.triangles[i].p2;
+
+            var intersect =  Cesium.IntersectionTests.rayTriangle(ray, p0, p1, p2);
+
+            if (intersect) {
+                return intersect;
+            }
+        }
+    }
+
+    /**
      * Called when {@link Viewer} or {@link CesiumWidget} render the scene to
      * get the draw commands needed to render this primitive.
      * <p>
@@ -4127,7 +4232,7 @@ define([
                 }
             }
             if (loadResources.finished() ||
-                (incrementallyLoadTextures && loadResources.finishedEverythingButTextureCreation())) {
+                (incrementallyLoadTextures && this.triangles && loadResources.finishedEverythingButTextureCreation())) {
                 this._state = ModelState.LOADED;
                 justLoaded = true;
             }

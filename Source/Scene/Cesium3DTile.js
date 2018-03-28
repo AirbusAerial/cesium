@@ -1100,5 +1100,40 @@ define([
         return destroyObject(this);
     };
 
+    /**
+     * Iterates over tile hierarchy looking for intersection
+     * @param {*} ray - the ray to test intersection
+     */
+    Cesium3DTile.prototype.intersectRay = function(ray) {
+        const intersection = this.checkIntersection(ray)
+
+        if (intersection) {
+            return intersection;
+        } else {
+            for (var i = 0; i < this.children.length; i++) {
+                var child = this.children[i];
+                var result = child.intersectRay(ray);
+
+                if (result) {
+                    return result;
+                }
+            }
+        }
+    };
+
+    /**
+     * Computes the intersection of a ray and a Cesium3DTile  as a Cartesian3 coordinate
+     * @param {*} ray - the ray to intersect with the tile
+     */
+    Cesium3DTile.prototype.checkIntersection = function(ray) {
+        if (this._content) {
+            if (this._content._model) {
+                var model = this._content._model;
+                const intersection = model.intersectRay(ray);
+                return intersection;
+            }
+        }
+    };
+
     return Cesium3DTile;
 });
