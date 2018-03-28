@@ -3,7 +3,6 @@ define([
         '../Core/Cartographic',
         '../Core/defaultValue',
         '../Core/defined',
-        '../Core/deprecationWarning',
         '../Core/DeveloperError',
         '../Core/GeographicTilingScheme',
         '../Core/Rectangle',
@@ -18,7 +17,6 @@ define([
         Cartographic,
         defaultValue,
         defined,
-        deprecationWarning,
         DeveloperError,
         GeographicTilingScheme,
         Rectangle,
@@ -37,7 +35,7 @@ define([
      * @exports createTileMapServiceImageryProvider
      *
      * @param {Object} [options] Object with the following properties:
-     * @param {Resource|String} [options.url='.'] Path to image tiles on server.
+     * @param {Resource|String|Promise<Resource>|Promise<String>} [options.url='.'] Path to image tiles on server.
      * @param {String} [options.fileExtension='png'] The file extension for images on the server.
      * @param {Credit|String} [options.credit=''] A credit for the data source, which is displayed on the canvas.
      * @param {Number} [options.minimumLevel=0] The minimum level-of-detail supported by the imagery provider.  Take care when specifying
@@ -91,23 +89,26 @@ define([
         }
         //>>includeEnd('debug');
 
-        if (defined(options.proxy)) {
-            deprecationWarning('createTileMapServiceImageryProvider.proxy', 'The options.proxy parameter has been deprecated. Specify options.url as a Resource instance and set the proxy property there.');
-        }
-
-        var resource = Resource.createIfNeeded(options.url, {
-            proxy : options.proxy
-        });
-        resource.appendForwardSlash();
-
-        var xmlResource = resource.getDerivedResource({
-            url: 'tilemapresource.xml'
-        });
-
         var deferred = when.defer();
         var imageryProvider = new UrlTemplateImageryProvider(deferred.promise);
 
         var metadataError;
+        var resource;
+        var xmlResource;
+        when(options.url)
+            .then(function(url) {
+                resource = Resource.createIfNeeded(url);
+                resource.appendForwardSlash();
+
+                xmlResource = resource.getDerivedResource({
+                    url: 'tilemapresource.xml'
+                });
+
+                requestMetadata();
+            })
+            .otherwise(function(e) {
+                deferred.reject(e);
+            });
 
         function metadataSuccess(xml) {
             var tileFormatRegex = /tileformat/i;
@@ -282,7 +283,6 @@ define([
             xmlResource.fetchXML().then(metadataSuccess).otherwise(metadataFailure);
         }
 
-        requestMetadata();
         return imageryProvider;
     }
 

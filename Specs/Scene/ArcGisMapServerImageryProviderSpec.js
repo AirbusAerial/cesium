@@ -8,9 +8,6 @@ defineSuite([
         'Core/defined',
         'Core/GeographicTilingScheme',
         'Core/getAbsoluteUri',
-        'Core/loadImage',
-        'Core/loadJsonp',
-        'Core/loadWithXhr',
         'Core/objectToQuery',
         'Core/queryToObject',
         'Core/Rectangle',
@@ -36,9 +33,6 @@ defineSuite([
         defined,
         GeographicTilingScheme,
         getAbsoluteUri,
-        loadImage,
-        loadJsonp,
-        loadWithXhr,
         objectToQuery,
         queryToObject,
         Rectangle,
@@ -61,9 +55,9 @@ defineSuite([
     });
 
     afterEach(function() {
-        loadJsonp.loadAndExecuteScript = loadJsonp.defaultLoadAndExecuteScript;
-        loadImage.createImage = loadImage.defaultCreateImage;
-        loadWithXhr.load = loadWithXhr.defaultLoad;
+        Resource._Implementations.loadAndExecuteScript = Resource._DefaultImplementations.loadAndExecuteScript;
+        Resource._Implementations.createImage = Resource._DefaultImplementations.createImage;
+        Resource._Implementations.loadWithXhr = Resource._DefaultImplementations.loadWithXhr;
     });
 
     function expectCorrectUrl(expectedBaseUrl, actualUrl, functionName, withProxy, token) {
@@ -91,7 +85,7 @@ defineSuite([
     }
 
     function stubJSONPCall(baseUrl, result, withProxy, token) {
-        loadJsonp.loadAndExecuteScript = function(url, functionName) {
+        Resource._Implementations.loadAndExecuteScript = function(url, functionName) {
             expectCorrectUrl(baseUrl, url, functionName, withProxy, token);
             setTimeout(function() {
                 window[functionName](result);
@@ -211,23 +205,23 @@ defineSuite([
             expect(provider.usingPrecachedTiles).toEqual(true);
             expect(provider.hasAlphaChannel).toBeDefined();
 
-            loadImage.createImage = function(url, crossOrigin, deferred) {
+            Resource._Implementations.createImage = function(url, crossOrigin, deferred) {
                 if (/^blob:/.test(url)) {
                     // load blob url normally
-                    loadImage.defaultCreateImage(url, crossOrigin, deferred);
+                    Resource._DefaultImplementations.createImage(url, crossOrigin, deferred);
                 } else {
                     expect(url).toEqual(getAbsoluteUri(baseUrl + 'tile/0/0/0'));
 
                     // Just return any old image.
-                    loadImage.defaultCreateImage('Data/Images/Red16x16.png', crossOrigin, deferred);
+                    Resource._DefaultImplementations.createImage('Data/Images/Red16x16.png', crossOrigin, deferred);
                 }
             };
 
-            loadWithXhr.load = function(url, responseType, method, data, headers, deferred, overrideMimeType) {
+            Resource._Implementations.loadWithXhr = function(url, responseType, method, data, headers, deferred, overrideMimeType) {
                 expect(url).toEqual(getAbsoluteUri(baseUrl + 'tile/0/0/0'));
 
                 // Just return any old image.
-                loadWithXhr.defaultLoad('Data/Images/Red16x16.png', responseType, method, data, headers, deferred);
+                Resource._DefaultImplementations.loadWithXhr('Data/Images/Red16x16.png', responseType, method, data, headers, deferred);
             };
 
             return provider.requestImage(0, 0, 0).then(function(image) {
@@ -288,23 +282,23 @@ defineSuite([
             expect(provider.rectangle).toEqual(new GeographicTilingScheme().rectangle);
             expect(provider.usingPrecachedTiles).toEqual(true);
 
-            loadImage.createImage = function(url, crossOrigin, deferred) {
+            Resource._Implementations.createImage = function(url, crossOrigin, deferred) {
                 if (/^blob:/.test(url)) {
                     // load blob url normally
-                    loadImage.defaultCreateImage(url, crossOrigin, deferred);
+                    Resource._DefaultImplementations.createImage(url, crossOrigin, deferred);
                 } else {
                     expect(url).toEqual(getAbsoluteUri(baseUrl + 'tile/0/0/0'));
 
                     // Just return any old image.
-                    loadImage.defaultCreateImage('Data/Images/Red16x16.png', crossOrigin, deferred);
+                    Resource._DefaultImplementations.createImage('Data/Images/Red16x16.png', crossOrigin, deferred);
                 }
             };
 
-            loadWithXhr.load = function(url, responseType, method, data, headers, deferred, overrideMimeType) {
+            Resource._Implementations.loadWithXhr = function(url, responseType, method, data, headers, deferred, overrideMimeType) {
                 expect(url).toEqual(getAbsoluteUri(baseUrl + 'tile/0/0/0'));
 
                 // Just return any old image.
-                loadWithXhr.defaultLoad('Data/Images/Red16x16.png', responseType, method, data, headers, deferred);
+                Resource._DefaultImplementations.loadWithXhr('Data/Images/Red16x16.png', responseType, method, data, headers, deferred);
             };
 
             return provider.requestImage(0, 0, 0).then(function(image) {
@@ -340,7 +334,7 @@ defineSuite([
             expect(provider.usingPrecachedTiles).toEqual(false);
             expect(provider.enablePickFeatures).toBe(true);
 
-            loadImage.createImage = function(url, crossOrigin, deferred) {
+            Resource._Implementations.createImage = function(url, crossOrigin, deferred) {
                 var uri = new Uri(url);
                 var params = queryToObject(uri.query);
 
@@ -357,7 +351,7 @@ defineSuite([
                 expect(params.size).toEqual('256,256');
 
                 // Just return any old image.
-                loadImage.defaultCreateImage('Data/Images/Red16x16.png', crossOrigin, deferred);
+                Resource._DefaultImplementations.createImage('Data/Images/Red16x16.png', crossOrigin, deferred);
             };
 
             return provider.requestImage(0, 0, 0).then(function(image) {
@@ -402,7 +396,7 @@ defineSuite([
             expect(provider.enablePickFeatures).toBe(false);
             expect(provider.layers).toEqual('foo,bar');
 
-            loadImage.createImage = function(url, crossOrigin, deferred) {
+            Resource._Implementations.createImage = function(url, crossOrigin, deferred) {
                 var uri = new Uri(url);
                 var params = queryToObject(uri.query);
 
@@ -421,7 +415,7 @@ defineSuite([
                 expect(params.token).toEqual(token);
 
                 // Just return any old image.
-                loadImage.defaultCreateImage('Data/Images/Red16x16.png', crossOrigin, deferred);
+                Resource._DefaultImplementations.createImage('Data/Images/Red16x16.png', crossOrigin, deferred);
             };
 
             return provider.requestImage(0, 0, 0).then(function(image) {
@@ -461,74 +455,23 @@ defineSuite([
             expect(provider.usingPrecachedTiles).toEqual(true);
             expect(provider.hasAlphaChannel).toBeDefined();
 
-            loadImage.createImage = function(url, crossOrigin, deferred) {
+            Resource._Implementations.createImage = function(url, crossOrigin, deferred) {
                 if (/^blob:/.test(url)) {
                     // load blob url normally
-                    loadImage.defaultCreateImage(url, crossOrigin, deferred);
+                    Resource._DefaultImplementations.createImage(url, crossOrigin, deferred);
                 } else {
                     expect(url).toEqual(expectedTileUrl);
 
                     // Just return any old image.
-                    loadImage.defaultCreateImage('Data/Images/Red16x16.png', crossOrigin, deferred);
+                    Resource._DefaultImplementations.createImage('Data/Images/Red16x16.png', crossOrigin, deferred);
                 }
             };
 
-            loadWithXhr.load = function(url, responseType, method, data, headers, deferred, overrideMimeType) {
+            Resource._Implementations.loadWithXhr = function(url, responseType, method, data, headers, deferred, overrideMimeType) {
                 expect(url).toEqual(expectedTileUrl);
 
                 // Just return any old image.
-                loadWithXhr.defaultLoad('Data/Images/Red16x16.png', responseType, method, data, headers, deferred);
-            };
-
-            return provider.requestImage(0, 0, 0).then(function(image) {
-                expect(image).toBeInstanceOf(Image);
-            });
-        });
-    });
-
-    it('routes requests through a proxy if one is specified', function() {
-        var baseUrl = '//tiledArcGisMapServer.invalid/';
-        var proxy = new DefaultProxy('/proxy/');
-
-        stubJSONPCall(baseUrl, geographicResult, true);
-
-        var provider = new ArcGisMapServerImageryProvider({
-            url : baseUrl,
-            proxy : proxy
-        });
-
-        expect(provider.url).toEqual(baseUrl);
-
-        return pollToPromise(function() {
-            return provider.ready;
-        }).then(function() {
-            expect(provider.tileWidth).toEqual(128);
-            expect(provider.tileHeight).toEqual(256);
-            expect(provider.maximumLevel).toEqual(2);
-            expect(provider.tilingScheme).toBeInstanceOf(GeographicTilingScheme);
-            expect(provider.credit).toBeDefined();
-            expect(provider.tileDiscardPolicy).toBeInstanceOf(DiscardMissingTileImagePolicy);
-            expect(provider.rectangle).toEqual(new GeographicTilingScheme().rectangle);
-            expect(provider.proxy).toEqual(proxy);
-            expect(provider.usingPrecachedTiles).toEqual(true);
-
-            loadImage.createImage = function(url, crossOrigin, deferred) {
-                if (/^blob:/.test(url)) {
-                    // load blob url normally
-                    loadImage.defaultCreateImage(url, crossOrigin, deferred);
-                } else {
-                    expect(url).toEqual(getAbsoluteUri(baseUrl + 'tile/0/0/0'));
-
-                    // Just return any old image.
-                    loadImage.defaultCreateImage('Data/Images/Red16x16.png', crossOrigin, deferred);
-                }
-            };
-
-            loadWithXhr.load = function(url, responseType, method, data, headers, deferred, overrideMimeType) {
-                expect(url).toEqual(proxy.getURL(getAbsoluteUri(baseUrl + 'tile/0/0/0')));
-
-                // Just return any old image.
-                loadWithXhr.defaultLoad('Data/Images/Red16x16.png', responseType, method, data, headers, deferred);
+                Resource._DefaultImplementations.loadWithXhr('Data/Images/Red16x16.png', responseType, method, data, headers, deferred);
             };
 
             return provider.requestImage(0, 0, 0).then(function(image) {
@@ -643,10 +586,10 @@ defineSuite([
             }, 1);
         });
 
-        loadImage.createImage = function(url, crossOrigin, deferred) {
+        Resource._Implementations.createImage = function(url, crossOrigin, deferred) {
             if (tries === 2) {
                 // Succeed after 2 tries
-                loadImage.defaultCreateImage('Data/Images/Red16x16.png', crossOrigin, deferred);
+                Resource._DefaultImplementations.createImage('Data/Images/Red16x16.png', crossOrigin, deferred);
             } else {
                 // fail
                 setTimeout(function() {
@@ -921,9 +864,9 @@ defineSuite([
                 usePreCachedTilesIfAvailable : false
             });
 
-            loadWithXhr.load = function(url, responseType, method, data, headers, deferred, overrideMimeType) {
+            Resource._Implementations.loadWithXhr = function(url, responseType, method, data, headers, deferred, overrideMimeType) {
                 expect(url).toContain('identify');
-                loadWithXhr.defaultLoad('Data/ArcGIS/identify-WebMercator.json', responseType, method, data, headers, deferred, overrideMimeType);
+                Resource._DefaultImplementations.loadWithXhr('Data/ArcGIS/identify-WebMercator.json', responseType, method, data, headers, deferred, overrideMimeType);
             };
 
             return pollToPromise(function() {
@@ -946,9 +889,9 @@ defineSuite([
                 usePreCachedTilesIfAvailable : false
             });
 
-            loadWithXhr.load = function(url, responseType, method, data, headers, deferred, overrideMimeType) {
+            Resource._Implementations.loadWithXhr = function(url, responseType, method, data, headers, deferred, overrideMimeType) {
                 expect(url).toContain('identify');
-                loadWithXhr.defaultLoad('Data/ArcGIS/identify-Geographic.json', responseType, method, data, headers, deferred, overrideMimeType);
+                Resource._DefaultImplementations.loadWithXhr('Data/ArcGIS/identify-Geographic.json', responseType, method, data, headers, deferred, overrideMimeType);
             };
 
             return pollToPromise(function() {
@@ -1018,12 +961,12 @@ defineSuite([
                 layers : 'someLayer,anotherLayerYay'
             });
 
-            loadWithXhr.load = function(url, responseType, method, data, headers, deferred, overrideMimeType) {
+            Resource._Implementations.loadWithXhr = function(url, responseType, method, data, headers, deferred, overrideMimeType) {
                 var uri = new Uri(url);
                 var query = queryToObject(uri.getQuery());
 
                 expect(query.layers).toContain('visible:someLayer,anotherLayerYay');
-                loadWithXhr.defaultLoad('Data/ArcGIS/identify-WebMercator.json', responseType, method, data, headers, deferred, overrideMimeType);
+                Resource._DefaultImplementations.loadWithXhr('Data/ArcGIS/identify-WebMercator.json', responseType, method, data, headers, deferred, overrideMimeType);
             };
 
             return pollToPromise(function() {
@@ -1032,35 +975,6 @@ defineSuite([
                 return provider.pickFeatures(0, 0, 0, 0.5, 0.5).then(function(pickResult) {
                     expect(pickResult.length).toBe(1);
                 });
-            });
-        });
-
-        it('picks using proxy if one is specified', function() {
-            var baseUrl = 'http://made/up/map/server/';
-            var proxy = new DefaultProxy('/proxy/');
-            var layers = '0,1';
-
-            var provider = new ArcGisMapServerImageryProvider({
-                url : baseUrl,
-                usePreCachedTilesIfAvailable : false,
-                layers : layers,
-                proxy : proxy
-            });
-
-            loadWithXhr.load = function(url, responseType, method, data, headers, deferred, overrideMimeType) {
-                var proxiedUri = new Uri(url);
-                var originalUriQuery = new Uri(decodeURIComponent(proxiedUri.query)).query;
-
-                // DefaultProxy simply puts the original request as the query string; duplicate it here expect match
-                expect(proxiedUri.toString()).toEqual(proxy.getURL(baseUrl + 'identify?' + originalUriQuery));
-
-                loadWithXhr.defaultLoad('Data/ArcGIS/identify-WebMercator.json', responseType, method, data, headers, deferred, overrideMimeType);
-            };
-
-            return pollToPromise(function() {
-                return provider.ready;
-            }).then(function() {
-                return provider.pickFeatures(0, 0, 0, 0.5, 0.5);
             });
         });
     });

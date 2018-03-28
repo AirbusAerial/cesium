@@ -11,7 +11,6 @@ define([
         '../Core/defaultValue',
         '../Core/defined',
         '../Core/defineProperties',
-        '../Core/deprecationWarning',
         '../Core/DeveloperError',
         '../Core/DistanceDisplayCondition',
         '../Core/Ellipsoid',
@@ -99,7 +98,6 @@ define([
         defaultValue,
         defined,
         defineProperties,
-        deprecationWarning,
         DeveloperError,
         DistanceDisplayCondition,
         Ellipsoid,
@@ -1828,8 +1826,6 @@ define([
         processPacketData(Boolean, rectangle, 'outline', rectangleData.outline, interval, sourceUri, entityCollection);
         processPacketData(Color, rectangle, 'outlineColor', rectangleData.outlineColor, interval, sourceUri, entityCollection);
         processPacketData(Number, rectangle, 'outlineWidth', rectangleData.outlineWidth, interval, sourceUri, entityCollection);
-        processPacketData(Boolean, rectangle, 'closeTop', rectangleData.closeTop, interval, sourceUri, entityCollection);
-        processPacketData(Boolean, rectangle, 'closeBottom', rectangleData.closeBottom, interval, sourceUri, entityCollection);
         processPacketData(ShadowMode, rectangle, 'shadows', rectangleData.shadows, interval, sourceUri, entityCollection);
         processPacketData(DistanceDisplayCondition, rectangle, 'distanceDisplayCondition', rectangleData.distanceDisplayCondition, interval, sourceUri, entityCollection);
     }
@@ -1971,28 +1967,17 @@ define([
 
         options = defaultValue(options, defaultValue.EMPTY_OBJECT);
 
-        if (defined(options.query)) {
-            deprecationWarning('CzmlDataSource.query', 'The options.query parameter has been deprecated. Specify czml or options.sourceUri as a Resource instance and add query parameters there.');
-        }
-
         var promise = czml;
         var sourceUri = options.sourceUri;
-        var query = options.query;
 
         // If the czml is a URL
         if (typeof czml === 'string' || (czml instanceof Resource)) {
-            czml = Resource.createIfNeeded(czml, {
-                queryParameters: query
-            });
-
+            czml = Resource.createIfNeeded(czml);
             promise = czml.fetchJson();
-
             sourceUri = defaultValue(sourceUri, czml.clone());
         }
 
-        sourceUri = Resource.createIfNeeded(sourceUri, {
-            queryParameters: query
-        });
+        sourceUri = Resource.createIfNeeded(sourceUri);
 
         DataSource.setLoading(dataSource, true);
 
