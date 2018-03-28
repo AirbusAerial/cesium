@@ -1927,6 +1927,14 @@ define([
     };
 
     /**
+     * Computes the intersection of a ray and a Cesium3DTileset  as a Cartesian3
+     * @param {*} ray - the ray to intersect with the tileset
+     */
+    Cesium3DTileset.prototype.intersectRay = function(ray) {
+        return this._root.intersectRay(ray);
+    };
+
+    /**
      * Destroys the WebGL resources held by this object.  Destroying an object allows for deterministic
      * release of WebGL resources, instead of relying on the garbage collector to destroy this object.
      * <br /><br />
